@@ -1,0 +1,30 @@
+# Core dependencies for RAG system
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Vector store backends
+faiss-cpu>=1.7.4  # For CPU-based FAISS
+# faiss-gpu>=1.7.4  # Uncomment for GPU support
+chromadb>=0.4.0
+
+# Embedding models
+sentence-transformers>=2.2.0
+transformers>=4.20.0
+torch>=1.12.0
+
+# Web framework
+fastapi>=0.95.0
+uvicorn>=0.20.0
+
+# Data processing
+pandas>=1.5.0
+pydantic>=1.10.0
+
+# Utilities
+python-multipart>=0.0.6
+python-dotenv>=0.19.0
+tqdm>=4.64.0
+
+# Optional: For advanced features
+# rank-bm25>=0.2.2  # For hybrid retrieval
+# scikit-learn>=1.1.0  # For additional ML utilities
