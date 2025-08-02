@@ -1,0 +1,21 @@
+# Embedder module requirements
+# Core dependencies for sentence-transformers and embedding functionality
+
+sentence-transformers>=2.2.2
+torch>=1.13.0
+numpy>=1.21.0
+transformers>=4.21.0
+scikit-learn>=1.1.0
+
+# Optional: For better performance
+accelerate>=0.20.0
+
+# Optional: For advanced caching (Redis)
+# redis>=4.5.0
+
+# Optional: For SQLite caching
+# sqlite3 (built-in with Python)
+
+# Development and testing
+pytest>=7.0.0
+pytest-cov>=4.0.0 
