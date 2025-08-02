@@ -91,13 +91,12 @@ class FileParser:
             '.eml': 'message/rfc822'
         }
         
-    async def parse_from_url(self, url: str, max_chars: Optional[int] = None) -> Dict[str, Any]:
+    async def parse_from_url(self, url: str) -> Dict[str, Any]:
         """
         Parse a file from a URL.
         
         Args:
             url: The URL pointing to the file to parse.
-            max_chars: Optional chunking size for text output.
             
         Returns:
             Dictionary containing parsed text and metadata.
@@ -110,7 +109,7 @@ class FileParser:
             temp_path = await self._download_file(url)
             
             # Parse the file
-            result = await self._parse_file(temp_path, url, max_chars)
+            result = await self._parse_file(temp_path, url)
             
             # Clean up temporary file
             self._cleanup_temp_file(temp_path)
@@ -121,13 +120,12 @@ class FileParser:
             logger.error(f"Failed to parse file from URL {url}: {str(e)}")
             raise ParserError(f"Failed to parse file: {str(e)}")
     
-    def parse_from_file(self, file_path: str, max_chars: Optional[int] = None) -> Dict[str, Any]:
+    def parse_from_file(self, file_path: str) -> Dict[str, Any]:
         """
         Parse a file from local path.
         
         Args:
             file_path: Path to the local file to parse.
-            max_chars: Optional chunking size for text output.
             
         Returns:
             Dictionary containing parsed text and metadata.
@@ -146,7 +144,7 @@ class FileParser:
                 raise ParserError(f"File too large: {file_size} bytes (max: {self.max_file_size})")
             
             # Parse the file
-            return self._parse_file_sync(file_path, str(file_path), max_chars)
+            return self._parse_file_sync(file_path, str(file_path))
             
         except Exception as e:
             logger.error(f"Failed to parse file {file_path}: {str(e)}")
@@ -257,14 +255,13 @@ class FileParser:
             logger.warning(f"MIME validation failed: {str(e)}")
             return True  # Continue processing even if validation fails
     
-    async def _parse_file(self, file_path: str, source_url: str, max_chars: Optional[int] = None) -> Dict[str, Any]:
+    async def _parse_file(self, file_path: str, source_url: str) -> Dict[str, Any]:
         """
         Parse a file asynchronously.
         
         Args:
             file_path: Path to the file to parse.
             source_url: Original URL of the file.
-            max_chars: Optional chunking size for text output.
             
         Returns:
             Dictionary with parsed text and metadata.
@@ -272,17 +269,16 @@ class FileParser:
         # Run sync parser in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, self._parse_file_sync, Path(file_path), source_url, max_chars
+            None, self._parse_file_sync, Path(file_path), source_url
         )
     
-    def _parse_file_sync(self, file_path: Path, source_url: str, max_chars: Optional[int] = None) -> Dict[str, Any]:
+    def _parse_file_sync(self, file_path: Path, source_url: str) -> Dict[str, Any]:
         """
         Parse a file synchronously.
         
         Args:
             file_path: Path to the file to parse.
             source_url: Original URL of the file.
-            max_chars: Optional chunking size for text output.
             
         Returns:
             Dictionary with parsed text and metadata.
@@ -323,10 +319,6 @@ class FileParser:
                 "length": len(text),
                 "metadata": metadata or {}
             }
-            
-            # Add chunking if requested
-            if max_chars:
-                result["text_chunks"] = self._chunk_text(text, max_chars)
             
             return result
             
@@ -608,55 +600,6 @@ class FileParser:
         except Exception as e:
             raise ParserError(f"EML parsing failed: {str(e)}")
     
-    def _chunk_text(self, text: str, max_chars: int, overlap: int = 100) -> List[str]:
-        """
-        Chunk text into segments with overlap.
-        
-        Args:
-            text: Text to chunk.
-            max_chars: Maximum characters per chunk.
-            overlap: Number of characters to overlap between chunks.
-            
-        Returns:
-            List of text chunks.
-        """
-        if len(text) <= max_chars:
-            return [text]
-        
-        # Ensure overlap is not larger than max_chars
-        overlap = min(overlap, max_chars // 2)
-        
-        chunks = []
-        start = 0
-        
-        while start < len(text):
-            end = start + max_chars
-            
-            # Try to break at word boundary
-            if end < len(text):
-                # Look for the last space or newline before the end
-                last_space = text.rfind(' ', start, end)
-                last_newline = text.rfind('\n', start, end)
-                break_point = max(last_space, last_newline)
-                
-                if break_point > start:
-                    end = break_point + 1
-            
-            chunk = text[start:end].strip()
-            if chunk:
-                chunks.append(chunk)
-            
-            # Move start position with overlap
-            new_start = end - overlap
-            if new_start <= start:  # Prevent getting stuck
-                new_start = start + max_chars // 2
-            
-            start = new_start
-            if start >= len(text):
-                break
-        
-        return chunks
-    
     def _clean_text(self, text: str) -> str:
         """
         Clean and normalize extracted text.
@@ -706,36 +649,34 @@ class FileParser:
 
 
 # Convenience functions for easy usage
-async def parse_url(url: str, max_chars: Optional[int] = None, enable_ocr: bool = False) -> Dict[str, Any]:
+async def parse_url(url: str, enable_ocr: bool = False) -> Dict[str, Any]:
     """
     Parse a file from URL.
     
     Args:
         url: The URL pointing to the file to parse.
-        max_chars: Optional chunking size for text output.
         enable_ocr: Whether to enable OCR fallback for scanned PDFs.
         
     Returns:
         Dictionary containing parsed text and metadata.
     """
     parser = FileParser(enable_ocr=enable_ocr)
-    return await parser.parse_from_url(url, max_chars)
+    return await parser.parse_from_url(url)
 
 
-def parse_file(file_path: str, max_chars: Optional[int] = None, enable_ocr: bool = False) -> Dict[str, Any]:
+def parse_file(file_path: str, enable_ocr: bool = False) -> Dict[str, Any]:
     """
     Parse a file from local path.
     
     Args:
         file_path: Path to the local file to parse.
-        max_chars: Optional chunking size for text output.
         enable_ocr: Whether to enable OCR fallback for scanned PDFs.
         
     Returns:
         Dictionary containing parsed text and metadata.
     """
     parser = FileParser(enable_ocr=enable_ocr)
-    return parser.parse_from_file(file_path, max_chars)
+    return parser.parse_from_file(file_path)
 
 
 if __name__ == "__main__":
@@ -745,7 +686,7 @@ if __name__ == "__main__":
     async def test_parser():
         # Test with a sample URL (replace with actual URL)
         try:
-            result = await parse_url("https://example.com/sample.pdf", max_chars=1000, enable_ocr=True)
+            result = await parse_url("https://example.com/sample.pdf", enable_ocr=True)
             print("Parsed result:", result)
         except ParserError as e:
             print(f"Parser error: {e}")
