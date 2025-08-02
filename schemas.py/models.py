@@ -65,8 +65,8 @@ class ModelConfig:
     reranker_batch_size: int = 32
     
     # Reasoning models
-    reasoning_model_name: str = "gpt-4-turbo-preview"
-    reasoning_provider: str = "openai"  # openai, anthropic, deepseek, local
+    reasoning_model_name: str = "claude-3-haiku-20240307"
+    reasoning_provider: str = "anthropic"  # openai, anthropic, deepseek, local
     max_tokens: int = 2048
     temperature: float = 0.1
     top_p: float = 0.9
@@ -350,9 +350,9 @@ class ReasoningModel:
                 logger.info("Initialized OpenAI client")
                 
             elif self.config.reasoning_provider == "anthropic" and ANTHROPIC_AVAILABLE:
-                api_key = os.getenv("ANTHROPIC_API_KEY")
+                api_key = os.getenv("CLAUDE_API_KEY")
                 if not api_key:
-                    raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+                    raise ValueError("CLAUDE_API_KEY environment variable not set")
                 
                 self.client = anthropic.Anthropic(api_key=api_key)
                 logger.info("Initialized Anthropic client")

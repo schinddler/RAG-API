@@ -72,11 +72,8 @@ class AnswerResponse(BaseModel):
 
 class HackRxResponse(BaseModel):
     """Response model for /hackrx/run endpoint."""
-    answers: List[AnswerResponse]
-    total_processing_time_ms: int
-    documents_processed: int
-    questions_processed: int
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    answers: List[str]  # Changed to match actual response format
+    performance: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ErrorResponse(BaseModel):
@@ -144,10 +141,29 @@ class RAGService:
             
             # Chunk text (keeping existing chunking logic)
             chunks = chunk_text(preprocessed_text)
+            logger.info(f"Created {len(chunks)} chunks from document")
+            
+            if not chunks:
+                logger.warning("No chunks created from document. Creating fallback chunks.")
+                # Create fallback chunks from sentences
+                sentences = preprocessed_text.split('. ')
+                chunks = []
+                for i, sentence in enumerate(sentences[:10]):  # Limit to first 10 sentences
+                    if len(sentence.strip()) > 20:  # Only meaningful sentences
+                        chunks.append({
+                            'id': f'chunk_{i}',
+                            'text': sentence.strip(),
+                            'metadata': {'source': 'fallback', 'chunk_index': i}
+                        })
+                logger.info(f"Created {len(chunks)} fallback chunks")
             
             # Create embeddings for chunks
             chunk_texts = [chunk['text'] for chunk in chunks]
-            embeddings = self.embedding_model.embed(chunk_texts)
+            if chunk_texts:
+                embeddings = self.embedding_model.embed(chunk_texts)
+            else:
+                embeddings = []
+                logger.error("No chunk texts available for embedding")
             
             # Store embeddings in FAISS (simplified - in production, use proper vector store)
             # For now, we'll use a simple in-memory approach
@@ -191,24 +207,33 @@ class RAGService:
             List of relevant chunks with scores
         """
         try:
+            chunks = document_data['chunks']
+            embeddings = document_data['embeddings']
+            
+            if not chunks or not embeddings:
+                logger.warning("No chunks or embeddings available for retrieval")
+                return []
+            
             # Get question embedding
             question_embedding = self.embedding_model.embed([question])[0]
             
             # Calculate similarities with all chunks
             similarities = []
-            chunks = document_data['chunks']
-            embeddings = document_data['embeddings']
             
             for chunk in chunks:
-                chunk_embedding = embeddings[chunk['id']]['embedding']
-                similarity = self._cosine_similarity(question_embedding, chunk_embedding)
-                
-                similarities.append({
-                    'chunk': chunk,
-                    'similarity': similarity,
-                    'text': chunk['text'],
-                    'metadata': chunk.get('metadata', {})
-                })
+                chunk_id = chunk['id']
+                if chunk_id in embeddings and 'embedding' in embeddings[chunk_id]:
+                    chunk_embedding = embeddings[chunk_id]['embedding']
+                    similarity = self._cosine_similarity(question_embedding, chunk_embedding)
+                    
+                    similarities.append({
+                        'chunk': chunk,
+                        'similarity': similarity,
+                        'text': chunk['text'],
+                        'metadata': chunk.get('metadata', {})
+                    })
+                else:
+                    logger.warning(f"Missing embedding for chunk {chunk_id}")
             
             # Sort by similarity and get top_k
             similarities.sort(key=lambda x: x['similarity'], reverse=True)
@@ -342,48 +367,51 @@ async def hackrx_run(
         
         # Process each question
         answers = []
+        step_times = {}
+        
+        # Step 1: Document processing
+        step1_start = time.time()
+        logger.info(f"Processing document: {document_data['total_chunks']} chunks extracted")
+        step_times["step1_processing"] = f"{time.time() - step1_start:.2f}s"
+        
         for i, question in enumerate(request.questions):
             question_start_time = time.time()
             
             logger.info(f"Processing question {i+1}/{len(request.questions)}: {question[:50]}...")
             
-            # Retrieve relevant chunks
+            # Step 2: Retrieve relevant chunks
+            step2_start = time.time()
             relevant_chunks = await rag_service.retrieve_relevant_chunks(
                 question, document_data
             )
+            step_times["step2_retrieval"] = f"{time.time() - step2_start:.2f}s"
             
+            # Step 3: Generate answer
+            step3_start = time.time()
             if not relevant_chunks:
-                # No relevant chunks found
-                answer_response = AnswerResponse(
-                    question=question,
-                    answer="No relevant information found in the document to answer this question.",
-                    source_clauses=[],
-                    confidence=0.0,
-                    processing_time_ms=int((time.time() - question_start_time) * 1000)
-                )
+                answer = "Not mentioned in the policy. The context provided does not contain information about this topic."
             else:
-                # Generate answer
                 answer_data = await rag_service.generate_answer(question, relevant_chunks)
-                
-                answer_response = AnswerResponse(
-                    question=question,
-                    answer=answer_data['answer'],
-                    source_clauses=answer_data['source_clauses'],
-                    confidence=answer_data['confidence'],
-                    processing_time_ms=int((time.time() - question_start_time) * 1000)
-                )
+                answer = answer_data.get('answer', "Unable to generate answer.")
             
-            answers.append(answer_response)
+            step_times["step3_generation"] = f"{time.time() - step3_start:.2f}s"
+            answers.append(answer)
         
-        total_time_ms = int((time.time() - start_time) * 1000)
+        total_time = time.time() - start_time
+        total_tracked_time = sum(float(v[:-1]) for v in step_times.values())
         
-        logger.info(f"Request completed in {total_time_ms}ms")
+        performance = {
+            "total_time": f"{total_time:.2f}s",
+            "total_tracked_time": f"{total_tracked_time:.2f}s",
+            "untracked_time": f"{total_time - total_tracked_time:.2f}s",
+            "step_times": step_times
+        }
+        
+        logger.info(f"Request completed in {total_time:.2f}s")
         
         return HackRxResponse(
             answers=answers,
-            total_processing_time_ms=total_time_ms,
-            documents_processed=1,
-            questions_processed=len(request.questions)
+            performance=performance
         )
         
     except HTTPException:
