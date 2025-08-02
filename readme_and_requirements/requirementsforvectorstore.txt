@@ -28,3 +28,14 @@ tqdm>=4.64.0
 # Optional: For advanced features
 # rank-bm25>=0.2.2  # For hybrid retrieval
 # scikit-learn>=1.1.0  # For additional ML utilities
+
+# Optional: For improved embedder features
+# tenacity>=8.0.0  # For retry logic in model loading
+# portalocker>=2.0.0  # For cross-platform file locking
+# redis>=4.0.0  # For Redis-based caching (distributed systems)
+# sqlite3  # Built-in Python module for SQLite caching
+
+# Optional: For advanced chunker features
+# nltk>=3.8.0  # For sentence tokenization
+# spacy>=3.5.0  # For advanced NLP processing
+# tiktoken>=0.4.0  # For accurate token counting

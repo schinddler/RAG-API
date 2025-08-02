@@ -1,0 +1,37 @@
+# Core dependencies for RAG system
+torch>=2.0.0
+sentence-transformers>=2.2.0
+numpy>=1.21.0
+tiktoken>=0.4.0
+spacy>=3.5.0
+nltk>=3.8
+
+# Document parsing dependencies
+PyMuPDF>=1.23.0  # For PDF text extraction
+python-docx>=0.8.11  # For DOCX text extraction
+aiofiles>=23.0.0  # For async file operations
+aiohttp>=3.8.0  # For async HTTP requests
+python-magic>=0.4.27  # For MIME type validation
+pytesseract>=0.3.10  # For OCR fallback
+html2text>=2020.1.16  # For HTML to text conversion
+Pillow>=9.0.0  # For image processing (OCR)
+
+# Vector indexing and database
+faiss-cpu>=1.7.0  # Use faiss-gpu for GPU acceleration
+psycopg2-binary>=2.9.0  # PostgreSQL adapter
+
+# Advanced features (optional but recommended)
+tenacity>=8.2.0
+portalocker>=2.7.0
+
+# Optional dependencies for future scalability
+# redis>=4.5.0  # For Redis-based caching
+# sqlite3  # Built into Python, no pip install needed
+
+# Development and testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Documentation
+sphinx>=5.0.0
+sphinx-rtd-theme>=1.2.0 

@@ -1,0 +1,22 @@
+{
+  "b536c7f212dc3747": {
+    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+    "embedding_dim": 384,
+    "created_at": 1753979334.9484365
+  },
+  "42170acee631c28c": {
+    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+    "embedding_dim": 384,
+    "created_at": 1753979334.9514446
+  },
+  "f1312edb515b563f": {
+    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+    "embedding_dim": 384,
+    "created_at": 1753979334.9541821
+  },
+  "973171281983a882": {
+    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+    "embedding_dim": 384,
+    "created_at": 1753979334.9566965
+  }
+}
